@@ -2,7 +2,5 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/app/src/main/java/my/apliacion/hole" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/app/src/main/java/my/apliacion/hole/core/graphics" vcs="Git" />
   </component>
 </project>
