@@ -32,22 +32,17 @@ class HorrorBackground {
         void main() {
             vec4 color = texture2D(u_Texture, v_TexCoord);
 
-            // 1. Grano de Película (Film Grain)
-            float grain = noise(v_TexCoord) * 0.12;
-            color.rgb += grain;
-
-            // 2. Scanlines CRT sutiles
-            float scanline = sin(v_TexCoord.y * 800.0) * 0.04;
-            color.rgb -= scanline;
-
-            // 3. Viñeteado simple (atmósfera)
-            float dist = distance(v_TexCoord, vec2(0.5, 0.5));
-            color.rgb *= smoothstep(0.8, 0.4, dist);
-
-            // 4. Flicker matemático sutil
-            float flicker = 0.95 + 0.05 * sin(u_Time * 10.0);
+            // 1. Grano de Película (Optimizado)
+            float grain = fract(sin(dot(v_TexCoord + u_Time, vec2(12.9898, 78.233))) * 43758.5453) * 0.1;
             
-            gl_FragColor = vec4(color.rgb * flicker, color.a * u_Alpha);
+            // 2. Scanlines sutiles
+            float scanline = sin(v_TexCoord.y * 500.0) * 0.02;
+            
+            vec3 finalRGB = (color.rgb + grain) - scanline;
+            
+            // 3. Flicker y Alpha
+            float flicker = 0.95 + 0.05 * sin(u_Time * 5.0);
+            gl_FragColor = vec4(finalRGB * flicker, u_Alpha);
         }
     """.trimIndent()
 
