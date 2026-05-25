@@ -35,6 +35,11 @@ object TextureUtils {
             val inputStream = context.assets.open(fileName)
             val bitmap = BitmapFactory.decodeStream(inputStream)
             inputStream.close()
+            
+            if (bitmap == null) {
+                android.util.Log.e("OpenGL", "Error: El archivo assets/$fileName no es una imagen válida")
+                return 0
+            }
 
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureIds[0])
 
@@ -45,7 +50,8 @@ object TextureUtils {
             bitmap.recycle()
 
         } catch (e: IOException) {
-            e.printStackTrace()
+            android.util.Log.e("OpenGL", "ERROR CRÍTICO: No se encontró el archivo '$fileName' en la carpeta assets.")
+            android.util.Log.e("OpenGL", "Asegúrate de copiar tu imagen a Hole/app/src/main/assets/")
             return 0
         }
 

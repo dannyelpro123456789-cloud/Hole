@@ -1,12 +1,10 @@
 package my.apliacion.hole
 
+import android.content.pm.ActivityInfo
+import android.media.MediaPlayer
 import android.opengl.GLSurfaceView
 import android.os.Bundle
-import android.view.Gravity
 import android.view.MotionEvent
-import android.view.View
-import android.widget.Button
-import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
 import my.apliacion.hole.core.graphics.TextureUtils
 import my.apliacion.hole.game.manager.GameState
@@ -17,70 +15,56 @@ class MainActivity : AppCompatActivity() {
     private lateinit var gLView: GLSurfaceView
     private var previousX: Float = 0f
     private var previousY: Float = 0f
+    
+    private var mediaPlayer: MediaPlayer? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Forzar orientación horizontal por código
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
 
-        // Inicializar utilidades con el contexto
+        // 1. Inicializar utilidades
         TextureUtils.init(this)
 
+        // 2. Iniciar música de fondo
+        setupBackgroundMusic()
+
+        // 3. Configurar motor gráfico OpenGL
         gLView = GLSurfaceView(this).apply {
             setEGLContextClientVersion(2)
             setRenderer(MyGameRenderer())
         }
 
-        val root = FrameLayout(this)
-        root.addView(gLView)
-
-        // Botón con estética VHS (Rojo, sin fondo, parpadeante)
-        val startButton = Button(this).apply {
-            text = "START"
-            setTextColor(0xFFFF0000.toInt()) // Rojo Sangre
-            setBackgroundColor(0) // Sin fondo (transparente)
-            textSize = 36f
-            typeface = android.graphics.Typeface.MONOSPACE // Fuente tipo terminal/retro
-            stateListAnimator = null // Quitar sombras de botón moderno
-            
-            // Animación de parpadeo estilo señal VHS inestable (más lenta/atmosférica)
-            val flicker = android.animation.ObjectAnimator.ofFloat(this, "alpha", 0.3f, 1.0f).apply {
-                duration = 800 // Parpadeo más lento
-                repeatMode = android.animation.ValueAnimator.REVERSE
-                repeatCount = android.animation.ValueAnimator.INFINITE
-                start()
-            }
-
-            setOnClickListener {
-                flicker.cancel() // Detener parpadeo al pulsar
-                animate().alpha(0f).setDuration(400).withEndAction {
-                    visibility = View.GONE
-                    gLView.queueEvent {
-                        GameStateManager.onMenuTouch()
-                    }
-                }
-            }
-        }
-
-        val params = FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-            Gravity.CENTER
-        )
-        root.addView(startButton, params)
-
-        setContentView(root)
+        // 4. Usar solo el motor gráfico como contenido (Eliminamos el botón nativo duplicado)
+        setContentView(gLView)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val x: Float = event.x
         val y: Float = event.y
 
-        if (event.action == MotionEvent.ACTION_MOVE) {
-            if (GameStateManager.currentState != GameState.MENU_INICIO) {
-                val deltaX = x - previousX
-                val deltaY = y - previousY
+        when (event.action) {
+            MotionEvent.ACTION_DOWN -> {
+                // Si estamos en el menú, cualquier toque inicia el juego
+                if (GameStateManager.currentState == GameState.MENU_INICIO) {
+                    gLView.queueEvent {
+                        // Bridge seguro al motor gráfico
+                        GameStateManager.onMenuTouch()
+                    }
+                    // Detenemos la música aquí también
+                    stopBackgroundMusic()
+                }
+            }
+            MotionEvent.ACTION_MOVE -> {
+                // Si ya estamos en el juego, el movimiento rota la cámara
+                if (GameStateManager.currentState != GameState.MENU_INICIO) {
+                    val deltaX = x - previousX
+                    val deltaY = y - previousY
 
-                gLView.queueEvent {
-                    GameStateManager.onInputRotation(deltaX, deltaY)
+                    gLView.queueEvent {
+                        GameStateManager.onInputRotation(deltaX, deltaY)
+                    }
                 }
             }
         }
@@ -90,6 +74,45 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
-    override fun onResume() { super.onResume(); gLView.onResume() }
-    override fun onPause() { super.onPause(); gLView.onPause() }
+    override fun onResume() {
+        super.onResume()
+        gLView.onResume()
+        if (GameStateManager.currentState == GameState.MENU_INICIO) {
+            mediaPlayer?.start()
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        gLView.onPause()
+        mediaPlayer?.pause()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        releaseMediaPlayer()
+    }
+
+    private fun setupBackgroundMusic() {
+        try {
+            mediaPlayer = MediaPlayer.create(this, R.raw.horror_menu).apply {
+                isLooping = true
+                start()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun stopBackgroundMusic() {
+        if (mediaPlayer?.isPlaying == true) {
+            mediaPlayer?.stop()
+        }
+        releaseMediaPlayer()
+    }
+
+    private fun releaseMediaPlayer() {
+        mediaPlayer?.release()
+        mediaPlayer = null
+    }
 }
